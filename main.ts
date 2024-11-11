@@ -1,5 +1,6 @@
 import express from "express";
 import cookieParser from "cookie-parser";
+import authRouter from "./routes/auth";
 
 
 const server = express();
@@ -7,7 +8,7 @@ const server = express();
 server.use(cookieParser());
 server.use(express.json());
 
-// server.use("/users", authRouter);
+server.use("/users", authRouter);
 // server.use('/users', usersRouter);
 
 
