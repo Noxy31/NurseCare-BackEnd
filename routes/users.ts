@@ -89,4 +89,19 @@ usersRouter.put(
   }
 );
 
+usersRouter.get(
+  "/get-nurses",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      const sql = "SELECT idUser, userName FROM users WHERE userRole = ?";
+      const nurses = await query(sql, [3]);
+      res.status(200).json(nurses);
+    } catch (error) {
+      console.error("Error fetching nurses:", error);
+      res.status(500).send(error);
+    }
+  }
+);
+
 export default usersRouter;
