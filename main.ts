@@ -2,6 +2,7 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import authRouter from "./routes/auth";
 import usersRouter from "./routes/users";
+import clientRouter from "./routes/clients";
 
 
 const server = express();
@@ -11,6 +12,7 @@ server.use(express.json());
 
 server.use("/users", authRouter);
 server.use('/users', usersRouter);
+server.use('/client', clientRouter);
 
 
 

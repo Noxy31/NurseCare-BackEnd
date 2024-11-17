@@ -11,7 +11,7 @@ const authRouter = Router();
 authRouter.use(cookieParser());
 
 authRouter.post("/login", async (req: Request, res: Response): Promise<any> => {
-  console.log("Login endpoint hit");
+  console.log("444 - Logged in successfully with :");
   const { email, password } = req.body;
   console.log(email);
 
