@@ -24,6 +24,21 @@ clientRouter.get(
   }
 );
 
+clientRouter.get(
+    "/get-clients",
+    authMiddleware,
+    async (req: Request, res: Response) => {
+      try {
+        const sql = "SELECT idClient, clientName, clientMail, clientAddress, clientPhone FROM clients";
+        const clients = await query(sql);
+  
+        res.status(200).json(clients);
+      } catch (error) {
+        res.status(500).send(error);
+      }
+    }
+  );
+
 clientRouter.post(
   "/create-client",
   authMiddleware,
