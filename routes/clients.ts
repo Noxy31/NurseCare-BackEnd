@@ -72,13 +72,13 @@ clientRouter.put(
 
     try {
       if (!idClient) {
-        res.status(400).json({ error: "Appointment id is required" });
+        res.status(400).json({ error: "Client id is required" });
       }
 
       const sql = `
           UPDATE clients 
-          SET clientName = ?, clientAddress = ?, clientPhone = ?, clientMail = ?, idClient = ?, idUser = ? 
-          WHERE idAppointment = ?
+          SET clientName = ?, clientAddress = ?, clientPhone = ?, clientMail = ?
+          WHERE idClient = ?
         `;
       await query(sql, [
         clientName,
