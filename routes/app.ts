@@ -28,6 +28,37 @@ appointmentsRouter.get(
   }
 );
 
+appointmentsRouter.get(
+  "/get-appointments-details",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      const sql = `
+        SELECT 
+          a.idApp,
+          a.appDate,
+          a.plannedAppTime,
+          a.realAppTime,
+          a.isDone,
+          a.idClient,
+          a.idUser,
+          c.clientName,
+          c.clientPhone,
+          u.userName as nurseName
+        FROM appointment a
+        LEFT JOIN clients c ON a.idClient = c.idClient
+        LEFT JOIN users u ON a.idUser = u.idUser
+        ORDER BY a.appDate, a.plannedAppTime
+      `;
+      
+      const appointments = await query(sql);
+      res.json(appointments);
+    } catch (error) {
+      res.status(500).json({ error: "Error fetching appointments details" });
+    }
+  }
+);
+
 appointmentsRouter.post(
   "/create-appointment",
   authMiddleware,
