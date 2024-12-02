@@ -53,7 +53,7 @@ authRouter.post("/login", async (req: Request, res: Response): Promise<any> => {
       {
         id: user.idUser,
         email: user.userMail,
-        isAdmin: user.userRole,
+        role: user.userRole,
         name: user.userName,
       },
       jwtSecret,
@@ -74,7 +74,7 @@ authRouter.post("/login", async (req: Request, res: Response): Promise<any> => {
         id: user.idUser,
         email: user.userMail,
         userName: user.userName,
-        isAdmin: user.userRole,
+        role: user.userRole,
       },
     });
   } catch (error) {
