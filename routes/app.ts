@@ -29,40 +29,34 @@ appointmentsRouter.get(
   }
 );
 
-appointmentsRouter.get("/nurse/today", async (req: Request, res: Response): Promise<any> => {
+appointmentsRouter.get("/today-app", async (req: Request, res: Response): Promise<any> => {
   try {
     const token = req.cookies.token;
     if (!token) {
       return res.status(401).json({ message: "Unauthorized" });
     }
-
     const jwtSecret = process.env.JWT_SECRET as string;
     const decodedToken = jwt.verify(token, jwtSecret) as { id: number };
-    const userId = decodedToken.id;
-
+    const idUser = decodedToken.id;
     const today = new Date().toISOString().split('T')[0];
-
     const sql = `
-      SELECT 
+      SELECT
         a.idApp,
         a.appDate,
         a.plannedAppTime,
         a.realAppTime,
         a.isDone,
         a.idClient,
-        c.clientFirstName,
-        c.clientLastName,
+        c.clientName,
         c.clientAddress
-      FROM appointments a
+      FROM appointment a
       JOIN clients c ON a.idClient = c.idClient
       WHERE a.idUser = ?
       AND DATE(a.appDate) = ?
       ORDER BY a.plannedAppTime ASC
     `;
-
-    const appointments = await query(sql, [userId, today]);
+    const appointments = await query(sql, [idUser, today]);
     res.status(200).json(appointments);
-
   } catch (error) {
     console.error("Error fetching today's appointments:", error);
     res.status(401).json({ message: "Invalid token" });
