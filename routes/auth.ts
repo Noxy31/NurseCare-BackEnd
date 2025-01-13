@@ -16,7 +16,7 @@ authRouter.post("/login", async (req: Request, res: Response): Promise<any> => {
   console.log(email);
 
   try {
-    const sql = "SELECT * FROM users WHERE userMail = ?";
+    const sql = "SELECT * FROM users WHERE users.\"userMail\" = $1";
     const users = await query(sql, [email]);
 
     if (users.length === 0) {

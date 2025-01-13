@@ -1,12 +1,9 @@
-import mysql, { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
+import { Pool } from 'pg';
 import dotenv from 'dotenv';
 dotenv.config();
 
-// Mise à jour de l'interface pour qu'elle corresponde à un type de ligne de données
-type QueryResult = RowDataPacket[] & ResultSetHeader;
 
-// Création d'une pool de connexions à la base de données
-const pool = mysql.createPool({
+const pool = new Pool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
@@ -15,10 +12,15 @@ const pool = mysql.createPool({
 });
 
 // Fonction helper pour exécuter des requêtes SQL
-export async function query(sqlString: string, params: any[] = []): Promise<QueryResult> {
+export async function query(sqlString: string, params: any[] = []): Promise<any> {
   try {
-    const [rows] = await pool.execute<QueryResult>(sqlString, params);
-    return rows;
+    const client = await pool.connect();
+    try {
+      const result = await client.query(sqlString, params);
+      return result.rows;
+    } finally {
+      client.release();
+    }
   } catch (error) {
     console.error('Erreur lors de l\'exécution de la requête SQL :', error);
     throw error;
