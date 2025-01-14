@@ -15,7 +15,7 @@ appointmentsRouter.get(
     try {
       const sql = `
         SELECT 
-          "idApp", "appDate", "plannedAppTime", "realAppTime", 
+          "idApp", "appDate", "foresAppTime", "realAppTime", 
           "isDone", "idClient", "idUser" 
         FROM "appointment"
       `;
@@ -41,7 +41,7 @@ appointmentsRouter.get("/today-app", async (req: Request, res: Response): Promis
       SELECT
         a."idApp",
         a."appDate",
-        a."plannedAppTime",
+        a."foresAppTime",
         a."realAppTime",
         a."isDone",
         a."idClient",
@@ -51,7 +51,7 @@ appointmentsRouter.get("/today-app", async (req: Request, res: Response): Promis
       JOIN "clients" c ON a."idClient" = c."idClient"
       WHERE a."idUser" = $1
       AND DATE(a."appDate") = $2
-      ORDER BY a."plannedAppTime" ASC
+      ORDER BY a."foresAppTime" ASC
     `;
     const appointments = await query(sql, [idUser, today]);
     res.status(200).json(appointments);
@@ -70,7 +70,7 @@ appointmentsRouter.get(
         SELECT 
           a."idApp",
           a."appDate",
-          a."plannedAppTime",
+          a."foresAppTime",
           a."realAppTime",
           a."isDone",
           a."idClient",
@@ -81,7 +81,7 @@ appointmentsRouter.get(
         FROM "appointment" a
         LEFT JOIN "clients" c ON a."idClient" = c."idClient"
         LEFT JOIN "users" u ON a."idUser" = u."idUser"
-        ORDER BY a."appDate", a."plannedAppTime"
+        ORDER BY a."appDate", a."foresAppTime"
       `;
       
       const appointments = await query(sql);
@@ -96,16 +96,16 @@ appointmentsRouter.post(
   "/create-appointment",
   authMiddleware,
   async (req: Request, res: Response) => {
-    const { appDate, plannedAppTime, realAppTime, isDone, idClient, idUser } = req.body;
+    const { appDate, foresAppTime, realAppTime, isDone, idClient, idUser } = req.body;
 
     try {
       const sql = `
-        INSERT INTO "appointment" ("appDate", "plannedAppTime", "realAppTime", "isDone", "idClient", "idUser") 
+        INSERT INTO "appointment" ("appDate", "foresAppTime", "realAppTime", "isDone", "idClient", "idUser") 
         VALUES ($1, $2, $3, $4, $5, $6)
       `;
       await query(sql, [
         appDate,
-        plannedAppTime,
+        foresAppTime,
         realAppTime,
         isDone,
         idClient,
@@ -125,7 +125,7 @@ appointmentsRouter.put(
     const {
       idAppointment,
       appDate,
-      plannedAppTime,
+      foresAppTime,
       realAppTime,
       isDone,
       idClient,
@@ -139,13 +139,13 @@ appointmentsRouter.put(
 
       const sql = `
         UPDATE "appointment" 
-        SET "appDate" = $1, "plannedAppTime" = $2, "realAppTime" = $3, 
+        SET "appDate" = $1, "foresAppTime" = $2, "realAppTime" = $3, 
             "isDone" = $4, "idClient" = $5, "idUser" = $6 
         WHERE "idAppointment" = $7
       `;
       await query(sql, [
         appDate,
-        plannedAppTime,
+        foresAppTime,
         realAppTime,
         isDone,
         idClient,

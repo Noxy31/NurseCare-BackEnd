@@ -84,7 +84,7 @@ usersRouter.get(
   async (req: Request, res: Response) => {
     try {
       const sql = 'SELECT "idUser", "userName" FROM "users" WHERE "userRole" = $1';
-      const nurses = await query(sql, [3]);
+      const nurses = await query(sql, ['nurse']);
       res.status(200).json(nurses);
     } catch (error) {
       console.error("Error fetching nurses:", error);
