@@ -146,6 +146,7 @@ appointmentsRouter.get(
           a."idUser",
           c."clientName",
           c."clientPhone",
+          c."clientMail",
           u."userName" as "nurseName"
         FROM "appointment" a
         LEFT JOIN "clients" c ON a."idClient" = c."idClient"
@@ -250,5 +251,54 @@ appointmentsRouter.post(
     }
   }
 );
+
+
+appointmentsRouter.get(
+  "/nurse-appointments", 
+  authMiddleware,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const token = req.cookies.token;
+      if (!token) {
+        res.status(401).json({ message: "Unauthorized" });
+        return;
+      }
+      const jwtSecret = process.env.JWT_SECRET as string;
+      if (!jwtSecret) {
+        throw new Error('JWT_SECRET not configured');
+      }
+
+      const decodedToken = jwt.verify(token, jwtSecret) as { id: number };
+      const idUser = decodedToken.id;
+
+      const sql = `
+        SELECT
+          a."idApp",
+          a."appDate",
+          a."foresAppTime",
+          a."realAppTime",
+          a."isDone",
+          a."idClient",
+          c."clientName",
+          c."clientAddress",
+          c."clientPhone",
+          c."clientMail"
+        FROM "appointment" a
+        JOIN "clients" c ON a."idClient" = c."idClient"
+        WHERE a."idUser" = $1
+        ORDER BY a."appDate" ASC, a."foresAppTime" ASC
+      `;
+      
+      const appointments = await query(sql, [idUser]);
+      res.status(200).json(appointments);
+    } catch (error) {
+      console.error("Error fetching nurse appointments:", error);
+      if (error instanceof jwt.JsonWebTokenError) {
+        res.status(401).json({ message: "Invalid token" });
+      } else {
+        res.status(500).json({ message: "Server error" });
+      }
+    }
+});
 
 export default appointmentsRouter;
