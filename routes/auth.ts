@@ -90,9 +90,19 @@ authRouter.get("/me", async (req: Request, res: Response): Promise<any> => {
       return res.status(401).json({ message: "Unauthorized" });
     }
     const jwtSecret = process.env.JWT_SECRET as string;
-
-    const decodedToken = jwt.verify(token, jwtSecret) as { name: string };
-    res.status(200).json({ name: decodedToken.name });
+    const decodedToken = jwt.verify(token, jwtSecret) as { 
+      name: string;
+      role: string;
+      id: number;
+      email: string;
+    };
+    
+    res.status(200).json({ 
+      name: decodedToken.name,
+      role: decodedToken.role,
+      id: decodedToken.id,
+      email: decodedToken.email
+    });
   } catch (error) {
     res.status(401).json({ message: "Invalid token" });
   }

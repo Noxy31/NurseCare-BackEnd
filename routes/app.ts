@@ -34,9 +34,20 @@ appointmentsRouter.get("/today-app", async (req: Request, res: Response): Promis
       return res.status(401).json({ message: "Unauthorized" });
     }
     const jwtSecret = process.env.JWT_SECRET as string;
+    if (!jwtSecret) {
+      throw new Error('JWT_SECRET not configured');
+    }
+
     const decodedToken = jwt.verify(token, jwtSecret) as { id: number };
     const idUser = decodedToken.id;
-    const today = new Date().toISOString().split('T')[0];
+    
+    const today = new Date();
+    const localDate = today.toLocaleDateString('fr-FR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).split('/').reverse().join('-');
+
     const sql = `
       SELECT
         a."idApp",
@@ -46,18 +57,76 @@ appointmentsRouter.get("/today-app", async (req: Request, res: Response): Promis
         a."isDone",
         a."idClient",
         c."clientName",
-        c."clientAddress"
+        c."clientAddress",
+        c."clientPhone"
       FROM "appointment" a
       JOIN "clients" c ON a."idClient" = c."idClient"
       WHERE a."idUser" = $1
       AND DATE(a."appDate") = $2
       ORDER BY a."foresAppTime" ASC
     `;
-    const appointments = await query(sql, [idUser, today]);
+    
+    const appointments = await query(sql, [idUser, localDate]);
     res.status(200).json(appointments);
   } catch (error) {
     console.error("Error fetching today's appointments:", error);
-    res.status(401).json({ message: "Invalid token" });
+    if (error instanceof jwt.JsonWebTokenError) {
+      res.status(401).json({ message: "Invalid token" });
+    } else {
+      res.status(500).json({ message: "Server error" });
+    }
+  }
+});
+
+appointmentsRouter.get("/tomorrow-app", async (req: Request, res: Response): Promise<any> => {
+  try {
+    const token = req.cookies.token;
+    if (!token) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const jwtSecret = process.env.JWT_SECRET as string;
+    if (!jwtSecret) {
+      throw new Error('JWT_SECRET not configured');
+    }
+
+    const decodedToken = jwt.verify(token, jwtSecret) as { id: number };
+    const idUser = decodedToken.id;
+    
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowDate = tomorrow.toLocaleDateString('fr-FR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).split('/').reverse().join('-');
+
+    const sql = `
+      SELECT
+        a."idApp",
+        a."appDate",
+        a."foresAppTime",
+        a."realAppTime",
+        a."isDone",
+        a."idClient",
+        c."clientName",
+        c."clientAddress",
+        c."clientPhone"
+      FROM "appointment" a
+      JOIN "clients" c ON a."idClient" = c."idClient"
+      WHERE a."idUser" = $1
+      AND DATE(a."appDate") = $2
+      ORDER BY a."foresAppTime" ASC
+    `;
+    
+    const appointments = await query(sql, [idUser, tomorrowDate]);
+    res.status(200).json(appointments);
+  } catch (error) {
+    console.error("Error fetching tomorrow's appointments:", error);
+    if (error instanceof jwt.JsonWebTokenError) {
+      res.status(401).json({ message: "Invalid token" });
+    } else {
+      res.status(500).json({ message: "Server error" });
+    }
   }
 });
 
