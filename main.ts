@@ -4,6 +4,9 @@ import authRouter from "./routes/auth";
 import usersRouter from "./routes/users";
 import clientRouter from "./routes/clients";
 import appointmentsRouter from "./routes/app";
+import billRouter from "./routes/bill";
+import traineeRouter from "./routes/trainee";
+import perfRouter from "./routes/perf";
 
 
 const server = express();
@@ -15,6 +18,9 @@ server.use("/users", authRouter);
 server.use('/users', usersRouter);
 server.use('/client', clientRouter);
 server.use('/appointment', appointmentsRouter);
+server.use('/bill', billRouter);
+server.use('/trainee', traineeRouter);
+server.use('/perf', perfRouter);
 
 
 
