@@ -50,6 +50,10 @@ perfRouter.post(
         });
         return;
       }
+
+      // Log pour debug
+      console.log("Performances reçues:", performances);
+
       await query("BEGIN");
 
       // Mise à jour du rendez-vous
@@ -60,25 +64,21 @@ perfRouter.post(
       `;
       await query(updateAppointmentSql, [idApp]);
 
-      // Calcul du montant total
-      const performancePrices = await query(
-        'SELECT "perfPrice" FROM "performance" WHERE "idPerf" = ANY($1)',
-        [performances.map((p) => p.idPerf)]
-      );
-
-      const totalAmount = performancePrices.rows
+      // Simplifions le calcul du total en utilisant les prix envoyés par le frontend
+      const totalAmount = performances
         .reduce(
-          (sum: number, row: { perfPrice: string }) =>
-            sum + parseFloat(row.perfPrice),
+          (sum: number, perf: { perfPrice: number }) => sum + perf.perfPrice,
           0
         )
         .toFixed(2);
 
+      console.log("Total calculé:", totalAmount);
+
       // Création de la facture
       const createBillSql = `
-        INSERT INTO "bill" ("billStatus", "totalAmount", "idApp")
+       INSERT INTO "bill" ("billStatus", "totalAmount", "idApp")
         VALUES ($1, $2, $3)
-        RETURNING "idBill"
+       RETURNING "idBill"
       `;
       const billResult = await query(createBillSql, [
         "pending",
@@ -86,12 +86,11 @@ perfRouter.post(
         idApp,
       ]);
 
-      // Vérifier si billResult est défini et a des lignes
-      if (!billResult || !billResult.rows || !billResult.rows[0]) {
-        throw new Error("Failed to create bill");
-      }
+      console.log("Résultat création facture:", billResult);
 
-      const idBill = billResult.rows[0].idBill;
+      // Modification ici : on accède directement au premier élément du résultat
+      const idBill = billResult[0].idBill;
+      console.log("ID de la facture créée:", idBill);
 
       // Suppression des anciennes performances
       const deleteOldImpliesSql = `
@@ -109,7 +108,6 @@ perfRouter.post(
       for (const perf of performances) {
         await query(insertImpliesSql, [idApp, perf.idPerf]);
       }
-
       // Gestion du stagiaire (reste identique)
       if (hasTrainee && idTrainee) {
         const traineeCheckSql = `
@@ -151,6 +149,7 @@ perfRouter.post(
       res.status(500).json({
         error: "Database error",
         details: error.message,
+        stack: error.stack,
       });
     }
   }
