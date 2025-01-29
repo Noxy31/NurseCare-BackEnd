@@ -7,6 +7,7 @@ import appointmentsRouter from "./routes/app";
 import billRouter from "./routes/bill";
 import traineeRouter from "./routes/trainee";
 import perfRouter from "./routes/perf";
+import categoriesRouter from "./routes/categories";
 
 
 const server = express();
@@ -21,6 +22,7 @@ server.use('/appointment', appointmentsRouter);
 server.use('/bill', billRouter);
 server.use('/trainee', traineeRouter);
 server.use('/perf', perfRouter);
+server.use('/categories', categoriesRouter);
 
 
 

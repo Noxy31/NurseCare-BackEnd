@@ -5,90 +5,118 @@ import { query } from "../db";
 const perfRouter = Router();
 
 perfRouter.get(
-  "/categories",
+  "/by-category/:idCategory",
   authMiddleware,
   async (req: Request, res: Response) => {
+    const { idCategory } = req.params;
     try {
-      const sql = 'SELECT "idCat", "catName" FROM "categories"';
-      const categories = await query(sql);
-      res.status(200).json(categories);
-    } catch (error) {
-      res.status(500).send(error);
+      console.log('Starting request for category:', idCategory);
+      console.log('Type of idCategory:', typeof idCategory);
+
+      const sql = 'SELECT "idPerf", "perfName", "perfPrice", "idCategory" FROM "performance" WHERE "idCategory" = $1';
+      console.log('SQL Query:', sql);
+      console.log('Parameters:', [idCategory]);
+
+      const performances = await query(sql, [idCategory]);
+      console.log('Query executed successfully. Results:', performance);
+      
+      res.status(200).json(performances);
+    } catch (error: any) {
+      console.error('Full error object:', error);
+      console.error('Error message:', error.message);
+      console.error('Error code:', error.code);
+      console.error('Error stack:', error.stack);
+      
+      res.status(500).json({ 
+        error: "Database error", 
+        details: error.message 
+      });
     }
   }
 );
 
-perfRouter.get(
-  "/by-category/:idCat",
-  authMiddleware,
-  async (req: Request, res: Response) => {
-    const { idCat } = req.params;
-    try {
-      const sql = 'SELECT "idPerf", "perfName", "perfPrice", "idCat" FROM "performances" WHERE "idCat" = $1';
-      const performances = await query(sql, [idCat]);
-      res.status(200).json(performances);
-    } catch (error) {
-      res.status(500).send(error);
-    }
-  }
-);
 
 perfRouter.post(
   "/save-appointment",
   authMiddleware,
-  async (req: Request, res: Response) => {
-    const { idApp, idPerf, hasTrainee, idTrainee } = req.body;
+  async (req: Request, res: Response): Promise<void> => {
+    const { idApp, performances, hasTrainee, idTrainee } = req.body;
+    
     try {
-      // Begin transaction
+      if (!Array.isArray(performances)) {
+        res.status(400).json({ 
+          error: "Invalid input", 
+          details: "performances must be an array" 
+        });
+        return;
+      }
+
       await query('BEGIN');
-
-      // Update appointment with performance
-      const updateAppSql = `
-        UPDATE "appointments"
-        SET "idPerf" = $1, "realAppTime" = CURRENT_TIME
-        WHERE "idApp" = $2
+      
+      // Mise à jour du rendez-vous
+      const updateAppointmentSql = `
+        UPDATE "appointment"
+        SET "isDone" = true
+        WHERE "idApp" = $1
       `;
-      await query(updateAppSql, [idPerf, idApp]);
+      await query(updateAppointmentSql, [idApp]);
 
-      // Handle trainee information
+      // Suppression des anciennes performances
+      const deleteOldImpliesSql = `
+        DELETE FROM "implies"
+        WHERE "idApp" = $1
+      `;
+      await query(deleteOldImpliesSql, [idApp]);
+
+      // Insertion des nouvelles performances
+      const insertImpliesSql = `
+        INSERT INTO "implies" ("idApp", "idPerf")
+        VALUES ($1, $2)
+      `;
+     
+      for (const perf of performances) {
+        await query(insertImpliesSql, [idApp, perf.idPerf]);
+      }
+
+      // Gestion du stagiaire
       if (hasTrainee && idTrainee) {
         const traineeCheckSql = `
           SELECT * FROM "observnote"
-          WHERE "observnote_idapp_fkey" = $1
+          WHERE "idApp" = $1
         `;
         const existingTrainee = await query(traineeCheckSql, [idApp]);
-
-        if (existingTrainee.length === 0) {
+       
+        if (existingTrainee.rows.length === 0) {
           const insertTraineeSql = `
-            INSERT INTO "observnote" ("observnote_idapp_fkey", "observnote_idtrainee_fkey")
+            INSERT INTO "observnote" ("idApp", "idTrainee")
             VALUES ($1, $2)
           `;
           await query(insertTraineeSql, [idApp, idTrainee]);
         } else {
           const updateTraineeSql = `
             UPDATE "observnote"
-            SET "observnote_idtrainee_fkey" = $1
-            WHERE "observnote_idapp_fkey" = $2
+            SET "idTrainee" = $1
+            WHERE "idApp" = $2
           `;
           await query(updateTraineeSql, [idTrainee, idApp]);
         }
       } else {
-        // Remove trainee association if exists
         const deleteTraineeSql = `
           DELETE FROM "observnote"
-          WHERE "observnote_idapp_fkey" = $1
+          WHERE "idApp" = $1
         `;
         await query(deleteTraineeSql, [idApp]);
       }
-
-      // Commit transaction
-      await query('COMMIT');
       
+      await query('COMMIT');
       res.status(200).json({ message: "Appointment details saved successfully" });
-    } catch (error) {
-      // Rollback in case of error
+    } catch (error: any) {
       await query('ROLLBACK');
-      res.status(500).json({ error: "Error saving appointment details" });
+      console.error('Database error:', error);
+      res.status(500).json({
+        error: "Database error",
+        details: error.message
+      });
     }
   }
 );
