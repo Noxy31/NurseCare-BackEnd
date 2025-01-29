@@ -9,7 +9,6 @@ import traineeRouter from "./routes/trainee";
 import perfRouter from "./routes/perf";
 import categoriesRouter from "./routes/categories";
 
-
 const server = express();
 
 server.use(cookieParser());
