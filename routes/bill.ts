@@ -4,9 +4,10 @@ import { query } from "../db";
 
 interface CustomRequest extends Request {
   user?: {
-    idUser: number;
+    id: number;
+    email: string;
+    isAdmin: boolean;
     userName: string;
-    userRole: string;
   };
 }
 
@@ -16,6 +17,12 @@ billRouter.get(
   "/get-bills",
   authMiddleware,
   async (req: CustomRequest, res: Response) => {
+    // Type guard pour req.user
+    if (!req.user) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
     try {
       const sql = `
         SELECT
@@ -38,7 +45,9 @@ billRouter.get(
         ORDER BY a."appDate" DESC, a."foresAppTime" DESC
       `;
       
-      const bills = await query(sql, [req.user?.idUser]);
+      const bills = await query(sql, [req.user.id]);
+      console.log('Bills found:', bills.length);
+      
       res.status(200).json(bills);
     } catch (error) {
       console.error('Error in get-bills:', error);
@@ -46,7 +55,6 @@ billRouter.get(
     }
   }
 );
-
 
 billRouter.post(
   "/create-bill",
