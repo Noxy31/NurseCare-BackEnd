@@ -2,15 +2,23 @@ import { Router, Request, Response } from "express";
 import { authMiddleware } from "../middlewares/authenticate";
 import { query } from "../db";
 
+interface CustomRequest extends Request {
+  user?: {
+    idUser: number;
+    userName: string;
+    userRole: string;
+  };
+}
+
 const billRouter = Router();
 
 billRouter.get(
   "/get-bills",
   authMiddleware,
-  async (req: Request, res: Response) => {
+  async (req: CustomRequest, res: Response) => {
     try {
       const sql = `
-        SELECT 
+        SELECT
           b."idBill",
           b."billStatus",
           b."totalAmount",
@@ -26,15 +34,19 @@ billRouter.get(
         FROM "bill" b
         JOIN "appointment" a ON b."idApp" = a."idApp"
         JOIN "clients" c ON a."idClient" = c."idClient"
-        ORDER BY b."idBill" DESC
+        WHERE a."idUser" = $1
+        ORDER BY a."appDate" DESC, a."foresAppTime" DESC
       `;
-      const bills = await query(sql);
+      
+      const bills = await query(sql, [req.user?.idUser]);
       res.status(200).json(bills);
     } catch (error) {
+      console.error('Error in get-bills:', error);
       res.status(500).json({ error: "Error fetching bills" });
     }
   }
 );
+
 
 billRouter.post(
   "/create-bill",
