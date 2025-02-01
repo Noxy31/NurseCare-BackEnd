@@ -71,4 +71,76 @@ traineeRouter.post(
   }
 );
 
+
+traineeRouter.post(
+  "/create-trainee",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    const { traineeName, traineeFirstName, traineeSchool, traineeAvgGrade } = req.body;
+    try {
+      const sql =
+        'INSERT INTO "trainee" ("traineeName", "traineeFirstName", "traineeSchool", "traineeAvgGrade") VALUES ($1, $2, $3, $4)';
+      await query(sql, [traineeName, traineeFirstName, traineeSchool, traineeAvgGrade]);
+      res.status(201).json({ message: "Trainee successfully created" });
+    } catch (error) {
+      res.status(500).send(error);
+    }
+  }
+);
+
+traineeRouter.get(
+  "/get-trainees",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      const sql = 'SELECT "idTrainee", "traineeName", "traineeFirstName", "traineeSchool", "traineeAvgGrade" FROM "trainee"';
+      const trainees = await query(sql);
+      res.status(200).json(trainees);
+    } catch (error) {
+      res.status(500).send(error);
+    }
+  }
+);
+
+traineeRouter.post(
+  "/delete-trainee",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    const { idTrainee } = req.body;
+    try {
+      if (!idTrainee) {
+        res.status(400).send("The ID of the trainee is required.");
+      }
+      const sql = 'DELETE FROM "trainee" WHERE "idTrainee" = $1';
+      await query(sql, [idTrainee]);
+      res.status(200).json({ message: "Stagiaire supprimé avec succès" });
+    } catch (error) {
+      res.status(500).send(error);
+    }
+  }
+);
+
+traineeRouter.put(
+  "/update-trainee",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    const { idTrainee, traineeName, traineeFirstName, traineeSchool, traineeAvgGrade } = req.body;
+    try {
+      if (!idTrainee) {
+        res.status(400).send("Trainee ID is required.");
+        console.log("IdTrainee not found.");
+        return;
+      }
+      const sql =
+        'UPDATE "trainee" SET "traineeName" = $1, "traineeFirstName" = $2, "traineeSchool" = $3, "traineeAvgGrade" = $4 WHERE "idTrainee" = $5';
+      await query(sql, [traineeName, traineeFirstName, traineeSchool, traineeAvgGrade, idTrainee]);
+      res.status(200).json({ message: "Trainee Successfully updated" });
+    } catch (error) {
+      console.log("Error updating trainee" + error);
+      res.status(500).send(error);
+    }
+  }
+);
+
 export default traineeRouter;
+

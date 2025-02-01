@@ -12,12 +12,78 @@ interface CustomRequest extends Request {
 }
 
 const billRouter = Router();
+//Route bills pour Secretary
+billRouter.get(
+  "/get-all-bills",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      const sql = `
+        SELECT 
+          b."idBill",
+          b."billStatus",
+          b."totalAmount",
+          a."appDate",
+          c."clientName"
+        FROM "bill" b
+        JOIN "appointment" a ON b."idApp" = a."idApp"
+        JOIN "clients" c ON a."idClient" = c."idClient"
+        ORDER BY a."appDate" DESC
+      `;
+      
+      const bills = await query(sql);
+      console.log('Bills found:', bills.length);
+      
+      res.status(200).json(bills);
+    } catch (error) {
+      console.error('Error in get-all-bills:', error);
+      res.status(500).json({ error: "Error fetching bills" });
+    }
+  }
+);
 
+billRouter.put(
+  "/update-bill",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    const { idBill, billStatus, totalAmount } = req.body;
+
+    try {
+      const sql = `
+        UPDATE "bill"
+        SET "billStatus" = $1, "totalAmount" = $2
+        WHERE "idBill" = $3
+      `;
+      await query(sql, [billStatus, totalAmount, idBill]);
+      res.status(200).json({ message: "Bill successfully updated" });
+    } catch (error) {
+      res.status(500).json({ error: "Error updating bill" });
+    }
+  }
+);
+
+billRouter.delete(
+  "/delete-bill/:idBill",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    const { idBill } = req.params;
+
+    try {
+      const sql = `DELETE FROM "bill" WHERE "idBill" = $1`;
+      await query(sql, [idBill]);
+      res.status(200).json({ message: "Bill successfully deleted" });
+    } catch (error) {
+      res.status(500).json({ error: "Error deleting bill" });
+    }
+  }
+);
+
+
+// Route bills pour Nurses
 billRouter.get(
   "/get-bills",
   authMiddleware,
   async (req: CustomRequest, res: Response) => {
-    // Type guard pour req.user
     if (!req.user) {
       res.status(401).json({ error: "Unauthorized" });
       return;
@@ -75,42 +141,6 @@ billRouter.post(
       });
     } catch (error) {
       res.status(500).json({ error: "Error creating bill" });
-    }
-  }
-);
-
-billRouter.put(
-  "/update-bill",
-  authMiddleware,
-  async (req: Request, res: Response) => {
-    const { idBill, billStatus, totalAmount } = req.body;
-
-    try {
-      const sql = `
-        UPDATE "bill"
-        SET "billStatus" = $1, "totalAmount" = $2
-        WHERE "idBill" = $3
-      `;
-      await query(sql, [billStatus, totalAmount, idBill]);
-      res.status(200).json({ message: "Bill successfully updated" });
-    } catch (error) {
-      res.status(500).json({ error: "Error updating bill" });
-    }
-  }
-);
-
-billRouter.delete(
-  "/delete-bill/:idBill",
-  authMiddleware,
-  async (req: Request, res: Response) => {
-    const { idBill } = req.params;
-
-    try {
-      const sql = `DELETE FROM "bill" WHERE "idBill" = $1`;
-      await query(sql, [idBill]);
-      res.status(200).json({ message: "Bill successfully deleted" });
-    } catch (error) {
-      res.status(500).json({ error: "Error deleting bill" });
     }
   }
 );
