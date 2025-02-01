@@ -40,7 +40,14 @@ perfRouter.post(
   "/save-appointment",
   authMiddleware,
   async (req: Request, res: Response): Promise<void> => {
-    const { idApp, performances, hasTrainee, idTrainee } = req.body;
+    const { 
+      idApp, 
+      performances, 
+      hasTrainee, 
+      idTrainee, 
+      traineeGrade, 
+      traineeComment 
+    } = req.body;
 
     try {
       if (!Array.isArray(performances)) {
@@ -51,12 +58,17 @@ perfRouter.post(
         return;
       }
 
-      // Log pour debug
-      console.log("Performances reçues:", performances);
+      console.log("Received data:", { 
+        performances, 
+        hasTrainee, 
+        idTrainee, 
+        traineeGrade, 
+        traineeComment 
+      });
 
       await query("BEGIN");
 
-      // Mise à jour du rendez-vous
+      // Mise a jour du rdv
       const updateAppointmentSql = `
         UPDATE "appointment"
         SET "isDone" = true
@@ -64,7 +76,7 @@ perfRouter.post(
       `;
       await query(updateAppointmentSql, [idApp]);
 
-      // Simplifions le calcul du total en utilisant les prix envoyés par le frontend
+      // Calcul du montant total de la facture
       const totalAmount = performances
         .reduce(
           (sum: number, perf: { perfPrice: number }) => sum + perf.perfPrice,
@@ -72,34 +84,35 @@ perfRouter.post(
         )
         .toFixed(2);
 
-      console.log("Total calculé:", totalAmount);
+      console.log("Calculated total:", totalAmount);
 
-      // Création de la facture
+      // Creation de la facture
       const createBillSql = `
-       INSERT INTO "bill" ("billStatus", "totalAmount", "idApp")
+        INSERT INTO "bill" ("billStatus", "totalAmount", "idApp")
         VALUES ($1, $2, $3)
-       RETURNING "idBill"
+        RETURNING "idBill"
       `;
-      const billResult = await query(createBillSql, [
+      const billResults = await query(createBillSql, [
         "pending",
         totalAmount,
         idApp,
       ]);
 
-      console.log("Résultat création facture:", billResult);
+      if (!billResults || billResults.length === 0) {
+        throw new Error('Failed to create bill');
+      }
+      
+      const idBill = billResults[0].idBill;
+      console.log("Created bill with ID:", idBill);
 
-      // Modification ici : on accède directement au premier élément du résultat
-      const idBill = billResult[0].idBill;
-      console.log("ID de la facture créée:", idBill);
-
-      // Suppression des anciennes performances
+      // Suppression des anciennes prestations
       const deleteOldImpliesSql = `
         DELETE FROM "implies"
         WHERE "idApp" = $1
       `;
       await query(deleteOldImpliesSql, [idApp]);
 
-      // Insertion des nouvelles performances
+      // Insertion des nouvelles prestations
       const insertImpliesSql = `
         INSERT INTO "implies" ("idApp", "idPerf")
         VALUES ($1, $2)
@@ -108,34 +121,78 @@ perfRouter.post(
       for (const perf of performances) {
         await query(insertImpliesSql, [idApp, perf.idPerf]);
       }
-      // Gestion du stagiaire (reste identique)
+
+      // Gestion de l'observation du stagiaire
       if (hasTrainee && idTrainee) {
+        // Validate la note si fournis et entre 0 et 20
+        if (traineeGrade !== null && (traineeGrade < 0 || traineeGrade > 20)) {
+          throw new Error('Invalid grade: must be between 0 and 20');
+        }
+
+        // Vérfie si une note existe déjà pour ce stagiaire
         const traineeCheckSql = `
-          SELECT * FROM "observnote"
+          SELECT COUNT(*) as count
+          FROM "observnote"
           WHERE "idApp" = $1
         `;
-        const existingTrainee = await query(traineeCheckSql, [idApp]);
+        const existingTraineeResult = await query(traineeCheckSql, [idApp]);
+        const existingCount = parseInt(existingTraineeResult[0]?.count || '0');
 
-        if (existingTrainee.rows.length === 0) {
+        if (existingCount === 0) {
+          // Insert une nouvelle observation
           const insertTraineeSql = `
-            INSERT INTO "observnote" ("idApp", "idTrainee")
-            VALUES ($1, $2)
+            INSERT INTO "observnote" 
+            ("idApp", "idTrainee", "ratingTicket", "commentTicket")
+            VALUES ($1, $2, $3, $4)
           `;
-          await query(insertTraineeSql, [idApp, idTrainee]);
+          await query(insertTraineeSql, [
+            idApp,
+            idTrainee,
+            traineeGrade,
+            traineeComment
+          ]);
+          console.log("Inserted new trainee observation");
         } else {
+          // Met a jour l'observation existante
           const updateTraineeSql = `
             UPDATE "observnote"
-            SET "idTrainee" = $1
-            WHERE "idApp" = $2
+            SET 
+              "idTrainee" = $1,
+              "ratingTicket" = $2,
+              "commentTicket" = $3
+            WHERE "idApp" = $4
           `;
-          await query(updateTraineeSql, [idTrainee, idApp]);
+          await query(updateTraineeSql, [
+            idTrainee,
+            traineeGrade,
+            traineeComment,
+            idApp
+          ]);
+          console.log("Updated existing trainee observation");
         }
+
+        // Mise a jour de la note moyenne du stagiaire dans la table trainee
+        const updateAvgGradeSql = `
+          WITH avg_grade AS (
+            SELECT AVG(CAST("ratingTicket" AS FLOAT)) as average
+            FROM "observnote"
+            WHERE "idTrainee" = $1
+            AND "ratingTicket" IS NOT NULL
+          )
+          UPDATE "trainee"
+          SET "traineeAvgGrade" = ROUND((SELECT average FROM avg_grade)::numeric, 2)
+          WHERE "idTrainee" = $1
+        `;
+        await query(updateAvgGradeSql, [idTrainee]);
+        console.log("Updated trainee average grade");
       } else {
+        // Si pas de stagiaire, supprime l'observation existante
         const deleteTraineeSql = `
           DELETE FROM "observnote"
           WHERE "idApp" = $1
         `;
         await query(deleteTraineeSql, [idApp]);
+        console.log("Deleted trainee observation");
       }
 
       await query("COMMIT");
