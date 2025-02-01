@@ -27,7 +27,7 @@ appointmentsRouter.get(
   }
 );
 
-appointmentsRouter.get("/today-app", async (req: Request, res: Response): Promise<any> => {
+appointmentsRouter.get("/today-app", authMiddleware, async (req: Request, res: Response): Promise<any> => {
   try {
     const token = req.cookies.token;
     if (!token) {
@@ -78,7 +78,7 @@ appointmentsRouter.get("/today-app", async (req: Request, res: Response): Promis
   }
 });
 
-appointmentsRouter.get("/tomorrow-app", async (req: Request, res: Response): Promise<any> => {
+appointmentsRouter.get("/tomorrow-app", authMiddleware, async (req: Request, res: Response): Promise<any> => {
   try {
     const token = req.cookies.token;
     if (!token) {

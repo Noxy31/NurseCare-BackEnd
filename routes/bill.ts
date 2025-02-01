@@ -12,7 +12,6 @@ interface CustomRequest extends Request {
 }
 
 const billRouter = Router();
-//Route bills pour Secretary
 billRouter.get(
   "/get-all-bills",
   authMiddleware,
