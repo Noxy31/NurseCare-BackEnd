@@ -142,5 +142,27 @@ traineeRouter.put(
   }
 );
 
+traineeRouter.get('/ratings/:idTrainee', authMiddleware, async (req, res) => {
+  try {
+    const { idTrainee } = req.params;
+   
+    const ratings = await query(
+      `SELECT "idApp", "ratingTicket", "commentTicket", "idTrainee"
+       FROM observnote
+       WHERE "idTrainee" = $1
+       ORDER BY "idApp" DESC`,
+      [idTrainee]
+    );
+   
+    res.json(ratings);
+  } catch (error) {
+    console.error('Error fetching trainee ratings:', error);
+    res.status(500).json({
+      error: 'Failed to fetch trainee ratings',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 export default traineeRouter;
 
