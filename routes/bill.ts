@@ -11,6 +11,19 @@ interface CustomRequest extends Request {
   };
 }
 
+enum BillStatus {
+  PENDING = 'pending',
+  ACCEPTED = 'accepted',
+  PAID = 'paid'
+}
+
+interface BillStats {
+  total: number;
+  pending: number;
+  accepted: number;
+  paid: number;
+}
+
 const billRouter = Router();
 billRouter.get(
   "/get-all-bills",
@@ -143,5 +156,45 @@ billRouter.post(
     }
   }
 );
+
+
+// Routes pour charts 
+
+billRouter.get("/bills-stats", authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const sql = `
+      SELECT 
+        CAST(COUNT(*) AS INTEGER) as total,
+        CAST(SUM(CASE WHEN "billStatus" = $1 THEN 1 ELSE 0 END) AS INTEGER) as pending,
+        CAST(SUM(CASE WHEN "billStatus" = $2 THEN 1 ELSE 0 END) AS INTEGER) as accepted,
+        CAST(SUM(CASE WHEN "billStatus" = $3 THEN 1 ELSE 0 END) AS INTEGER) as paid
+      FROM "bill"
+    `;
+    
+    const results = await query(sql, [
+      BillStatus.PENDING,
+      BillStatus.ACCEPTED,
+      BillStatus.PAID
+    ]);
+    
+    console.log('Bill stats raw results:', results);
+    
+    if (results && results.length > 0) {
+      const stats: BillStats = {
+        total: Number(results[0].total) || 0,
+        pending: Number(results[0].pending) || 0,
+        accepted: Number(results[0].accepted) || 0,
+        paid: Number(results[0].paid) || 0
+      };
+      console.log('Formatted bill stats:', stats);
+      res.json(stats);
+    } else {
+      res.json({ total: 0, pending: 0, accepted: 0, paid: 0 });
+    }
+  } catch (error) {
+    console.error('Error in bills-stats:', error);
+    res.status(500).json({ error: "Error fetching bill statistics" });
+  }
+});
 
 export default billRouter;

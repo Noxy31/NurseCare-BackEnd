@@ -301,4 +301,23 @@ appointmentsRouter.get(
     }
 });
 
+// Routes pour charts
+
+appointmentsRouter.get("/appointments-stats", authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const sql = `
+      SELECT 
+        COUNT(*) as total,
+        COUNT(CASE WHEN "isDone" = true THEN 1 END) as completed,
+        COUNT(CASE WHEN "isDone" = false THEN 1 END) as pending
+      FROM "appointment"
+    `;
+    const stats = await query(sql);
+    res.status(200).json(stats[0]);
+  } catch (error) {
+    res.status(500).json({ error: "Error fetching appointment statistics" });
+  }
+});
+
+
 export default appointmentsRouter;
