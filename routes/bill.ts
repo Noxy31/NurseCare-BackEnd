@@ -197,4 +197,29 @@ billRouter.get("/bills-stats", authMiddleware, async (req: Request, res: Respons
   }
 });
 
+// Chart pour manager
+billRouter.get("/category-revenue", authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const sql = `
+      SELECT 
+        c."catName",
+        CAST(SUM(CAST(b."totalAmount" AS DECIMAL(10,2))) AS FLOAT) as revenue
+      FROM "category" c
+      JOIN "performance" p ON p."idCategory" = c."idCategory"
+      JOIN "implies" i ON i."idPerf" = p."idPerf"
+      JOIN "appointment" a ON a."idApp" = i."idApp"
+      JOIN "bill" b ON b."idApp" = a."idApp"
+      WHERE b."billStatus" = $1
+      GROUP BY c."catName"
+      ORDER BY revenue DESC
+    `;
+    
+    const results = await query(sql, [BillStatus.PAID]);
+    res.json(results);
+  } catch (error) {
+    console.error('Error in category-revenue:', error);
+    res.status(500).json({ error: "Error fetching category revenue" });
+  }
+});
+
 export default billRouter;
