@@ -68,10 +68,12 @@ perfRouter.post(
 
       await query("BEGIN");
 
-      // Mise a jour du rdv
+      // Mise a jour du rdv avec l'heure réelle
       const updateAppointmentSql = `
         UPDATE "appointment"
-        SET "isDone" = true
+        SET 
+          "isDone" = true,
+          "realAppTime" = NOW()
         WHERE "idApp" = $1
       `;
       await query(updateAppointmentSql, [idApp]);
